@@ -196,7 +196,9 @@ UPROGS=\
 	$U/_forphan\
 	$U/_dorphan\
 	$U/_hello\
-
+        $U/_sixfive\
+        $U/_sleep\
+	$U/_find\
 
 
 ifeq ($(LAB),syscall)
