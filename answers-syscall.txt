@@ -1,0 +1,21 @@
+1. What is the name of the process that triggers the syscall breakpoint?
+   sh
+
+2. What is the value of $sstatus when the syscall is entered?
+   0x10000
+
+3. What does the SPP bit (bit 8) in sstatus indicate, and what is its value here?
+   The SPP (Supervisor Previous Privilege) bit indicates the privilege mode
+   from which the trap originated. A value of 0 means the trap came from user mode,
+   which is expected for a system call.
+
+4. What does `p /x *p` print?
+   It prints the entire proc struct of the current process in hexadecimal,
+   including fields like pid, state, name, trapframe, etc.
+
+5. When you replace `num = p->trapframe->a7;` with `num = *(int *)0;`, what is the sepc value printed in the panic?
+   Example: 0x80001bfe
+
+6. How do you locate the faulting instruction in kernel/kernel.asm?
+   Search for the sepc address (e.g., 80001bfe) in kernel/kernel.asm to find the exact
+   assembly instruction that caused the page fault (likely a load from address 0).
