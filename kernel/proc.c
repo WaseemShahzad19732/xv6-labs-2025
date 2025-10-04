@@ -253,8 +253,9 @@ growproc(int n)
 
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
+//start fork
 int
-kfork(void)
+fork(void)
 {
   int i, pid;
   struct proc *np;
@@ -285,6 +286,10 @@ kfork(void)
       np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
 
+  // Copy interpose sandbox state (REQUIRED for syscall lab)
+  np->interpose_mask = p->interpose_mask;
+  safestrcpy(np->interpose_path, p->interpose_path, MAXPATH);
+
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
@@ -302,6 +307,7 @@ kfork(void)
   return pid;
 }
 
+//end fork
 // Pass p's abandoned children to init.
 // Caller must hold wait_lock.
 void

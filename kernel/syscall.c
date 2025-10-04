@@ -1,11 +1,12 @@
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
-#include "riscv.h"
+#include "riscv.h"        // ← contains pagetable_t
 #include "spinlock.h"
 #include "proc.h"
-#include "syscall.h"
 #include "defs.h"
+#include "syscall.h"
+
 
 // Fetch the uint64 at addr from the current process.
 int
@@ -81,6 +82,7 @@ argstr(int n, char *buf, int max)
 
 // Prototypes for the functions that handle system calls.
 extern uint64 sys_fork(void);
+extern uint64 sys_interpose(void);//new line
 extern uint64 sys_exit(void);
 extern uint64 sys_wait(void);
 extern uint64 sys_pipe(void);
@@ -126,7 +128,12 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_interpose] sys_interpose,
 };
+
+
+
+
 
 void
 syscall(void)
@@ -135,13 +142,33 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
+
+  // Enforce interpose sandbox
+  if (p->interpose_mask & (1 << num)) {
+    // Allow open/exec only if path matches interpose_path
+    if ((num == SYS_open || num == SYS_exec) && p->interpose_path[0] != '\0') {
+        char user_path[MAXPATH];
+        if (num == SYS_open) {
+            if (argstr(0, user_path, MAXPATH) >= 0 &&
+                strncmp(user_path, p->interpose_path, MAXPATH) == 0) {
+                goto allow;
+            }
+        } else if (num == SYS_exec) {
+            if (argstr(0, user_path, MAXPATH) >= 0 &&
+                strncmp(user_path, p->interpose_path, MAXPATH) == 0) {
+                goto allow;
+            }
+        }
+    }
+    // Block the syscall
+    p->trapframe->a0 = -1;
+    return;
+  }
+allow:
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    // Use num to lookup the system call function for num, call it,
-    // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
   } else {
-    printf("%d %s: unknown sys call %d\n",
-            p->pid, p->name, num);
+    printf("%d %s: unknown sys call %d\n", p->pid, p->name, num);
     p->trapframe->a0 = -1;
   }
 }

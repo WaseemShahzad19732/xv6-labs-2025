@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "vm.h"
 
+int fork(void);
 uint64
 sys_exit(void)
 {
@@ -25,7 +26,7 @@ sys_getpid(void)
 uint64
 sys_fork(void)
 {
-  return kfork();
+  return fork();
 }
 
 uint64
@@ -104,4 +105,19 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+uint64
+sys_interpose(void)
+{
+    int mask;
+    char path[MAXPATH];
+    struct proc *p = myproc();
+
+    argint(0, &mask);               // void — no return check
+    if (argstr(1, path, MAXPATH) < 0)
+        return -1;
+
+    p->interpose_mask = mask;
+    safestrcpy(p->interpose_path, path, MAXPATH);
+    return 0;
 }
