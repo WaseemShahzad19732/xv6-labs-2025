@@ -1,17 +1,14 @@
-Bug: Uninitialized kernel pages leak cross-process memory
+Bug: Uninitialized pages leak cross-process memory
 
 Description:
-In the syscall lab, xv6 intentionally omits calls to memset() that zero
-newly allocated pages in uvmalloc() (kernel/vm.c) and poison freed pages
-in kfree() (kernel/kalloc.c) when LAB_SYSCALL is defined.
+In the syscall lab, xv6 disables memset() calls that zero newly
+allocated user pages (in uvmalloc) and poison freed pages (in kfree)
+when LAB_SYSCALL is defined. This causes sbrk() to return pages
+containing leftover data from previous processes.
 
 Impact:
-This allows a user process to read leftover data from previously freed
-memory — potentially from other processes. As demonstrated by attack.c,
-an adversary can recover secrets (e.g., from secret.c) by scanning pages
-returned by sbrk().
-
-This breaks process isolation, a core security guarantee of the OS.
+Breaks process isolation. An attacker can scan pages from sbrk()
+to recover secrets (e.g., from secret.c), as demonstrated by attack.c.
 
 Proof of Concept:
 - Run: secret xyzzy
