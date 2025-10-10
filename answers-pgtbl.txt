@@ -1,17 +1,17 @@
 In the output of pgtbltest, the last two virtual addresses are:
 
-- 0xFFFFE000: This is the trampoline page, which contains kernel code that
+- 0xFFFFE000 (shorthand for 0x3FFFFFE000): This is the trampoline page, which contains kernel code that
   handles the transition from user space to kernel space during system calls
   and exceptions. Its permission bits are 0xC7 (binary 11000111), meaning:
     - PTE_V=1 (valid)
     - PTE_R=1 (readable)
     - PTE_W=1 (writable)
-    - PTE_X=0 (not executable in this view)
+    - PTE_X=0 in this mapping (though executable in kernel view)
     - PTE_U=0 (not user-accessible)
   Because PTE_U is 0, user code cannot read or modify this page, which is critical
   for security — otherwise user programs could hijack system call entry.
 
-- 0xFFFFF000: This is the trapframe page, which holds the user register state
+- 0xFFFFF000 (shorthand for 0x3FFFFFF000): This is the trapframe page, which holds the user register state
   when a trap (e.g., system call) occurs. Its permission bits are 0x4B
   (binary 01001011), meaning:
     - PTE_V=1 (valid)
@@ -20,8 +20,27 @@ In the output of pgtbltest, the last two virtual addresses are:
     - PTE_X=0 (not executable)
     - PTE_U=1 (user-accessible)
   User code must be able to read and write this page (e.g., to set up arguments
-  for system calls), so it is mapped with user permissions.
+  for system calls or inspect return values), so it is mapped with user permissions.
 
 The difference in permissions ensures that sensitive kernel code (trampoline)
 is protected from user modification, while necessary user/kernel shared data
 (trapframe) remains accessible to user programs.
+
+Additionally, for every leaf page in the vmprint output:
+
+- Low virtual addresses (e.g., 0x0, 0x1000) contain the user program's text, data,
+  and heap. Their permission bits (e.g., 0x5B = 0b01011011) indicate they are
+  valid, readable, writable, executable, and user-accessible (PTE_V, PTE_R,
+  PTE_W, PTE_X, PTE_U). These correspond to the first entries in print_pgtbl().
+
+- The page at 0xFFFFE000 (0x3FFFFFE000) is the trampoline, with PTE_U=0,
+  matching the second-to-last entry in print_pgtbl().
+
+- The page at 0xFFFFF000 (0x3FFFFFF000) is the trapframe, with PTE_U=1,
+  matching the last entry in print_pgtbl().
+
+The vmprint() function recursively prints the 3-level Sv39 page table with
+indentation indicating depth. Each leaf (three levels of "..") corresponds to a
+4KB page, and the virtual addresses and permissions align with the flat view
+provided by print_pgtbl(), confirming the process memory layout described in
+xv6 book Figure 3.4.
