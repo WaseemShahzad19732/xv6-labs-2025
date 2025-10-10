@@ -1,0 +1,27 @@
+In the output of pgtbltest, the last two virtual addresses are:
+
+- 0xFFFFE000: This is the trampoline page, which contains kernel code that
+  handles the transition from user space to kernel space during system calls
+  and exceptions. Its permission bits are 0xC7 (binary 11000111), meaning:
+    - PTE_V=1 (valid)
+    - PTE_R=1 (readable)
+    - PTE_W=1 (writable)
+    - PTE_X=0 (not executable in this view)
+    - PTE_U=0 (not user-accessible)
+  Because PTE_U is 0, user code cannot read or modify this page, which is critical
+  for security — otherwise user programs could hijack system call entry.
+
+- 0xFFFFF000: This is the trapframe page, which holds the user register state
+  when a trap (e.g., system call) occurs. Its permission bits are 0x4B
+  (binary 01001011), meaning:
+    - PTE_V=1 (valid)
+    - PTE_R=1 (readable)
+    - PTE_W=1 (writable)
+    - PTE_X=0 (not executable)
+    - PTE_U=1 (user-accessible)
+  User code must be able to read and write this page (e.g., to set up arguments
+  for system calls), so it is mapped with user permissions.
+
+The difference in permissions ensures that sensitive kernel code (trampoline)
+is protected from user modification, while necessary user/kernel shared data
+(trapframe) remains accessible to user programs.
