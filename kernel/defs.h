@@ -241,3 +241,4 @@ void            netinit(void);
 void            net_rx(char *buf, int len);
 
 #endif
+void vmprint(pagetable_t);
